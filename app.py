@@ -1,9 +1,15 @@
+import os
 import streamlit as st
+from dotenv import load_dotenv
 from utils import inspect_files
 from agent import process_query
 
+# Load environment variables from .env
+load_dotenv()
+
 def main():
     st.set_page_config(page_title="SatQuery AI - Vibe_coders", layout="wide")
+        
     st.title("🛰️ SatQuery AI - Vibe_coders")
     st.markdown("Agentic Vision-Language Assistant for Remote Sensing Images (SIH26167)")
 
@@ -39,7 +45,7 @@ def main():
             st.markdown(message["content"])
             # Display execution trace if present
             if "trace" in message and message["trace"]:
-                with st.expander("Execution Trace", expanded=False):
+                with st.expander("Auditable Execution Summary", expanded=False):
                     st.json(message["trace"])
 
     # React to user input
@@ -58,22 +64,35 @@ def main():
             response = "Cannot process query. Uploaded files have an invalid configuration."
             trace = None
         else:
-            with st.spinner("Processing query..."):
-                result = process_query(prompt, file_metadata)
-                response = result["response"]
-                trace = {
-                    "Selected Task": result["task"],
-                    "Model/Tool Names Used": result["tool_used"],
-                    "Input Modality": result["modality"],
-                    "Confidence Score": result.get("confidence", "N/A")
-                }
+            with st.spinner("Agentic Controller is thinking..."):
+                try:
+                    result = process_query(prompt, file_metadata)
+                    response = f"**Agent Reasoning:** {result.get('reasoning', 'No reasoning provided.')}"
+                    trace = {
+                        "Selected Task": result.get("selected_task", "N/A"),
+                        "Tools Used": result.get("tools_used", "N/A"),
+                        "Confidence Score": result.get("confidence_score", "N/A"),
+                        "Input Modality": result.get("modality", "Unknown"),
+                        "File Metadata": file_metadata.get("metadata", [])
+                    }
+                except Exception as e:
+                    response = f"Error processing query: {str(e)}"
+                    trace = None
 
         # Display assistant response in chat message container
         with st.chat_message("assistant"):
             st.markdown(response)
             if trace:
-                with st.expander("Execution Trace", expanded=True):
-                    st.json(trace)
+                st.info("Query successfully routed by Agentic Controller.")
+                with st.expander("Auditable Execution Summary", expanded=True):
+                    st.write(f"**Selected Task:** {trace['Selected Task']}")
+                    st.write(f"**Tools Used:** {trace['Tools Used']}")
+                    st.write(f"**Confidence:** {trace['Confidence Score']}")
+                    st.write(f"**Modality:** {trace['Input Modality']}")
+                    st.markdown("---")
+                    st.write("**Image Metadata Extracted:**")
+                    for meta in trace["File Metadata"]:
+                        st.json(meta)
                     
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "assistant", "content": response, "trace": trace})

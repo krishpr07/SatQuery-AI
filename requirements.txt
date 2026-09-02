@@ -3,3 +3,5 @@ rasterio
 Pillow
 langchain
 langchain-core
+google-genai
+python-dotenv
