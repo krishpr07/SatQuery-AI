@@ -1,0 +1,5 @@
+streamlit
+rasterio
+Pillow
+langchain
+langchain-core
