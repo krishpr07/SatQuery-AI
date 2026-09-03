@@ -307,6 +307,14 @@ def main():
                         st.image(uploaded_files[1], caption="Time 2 (After)", use_container_width=True)
                     with col3:
                         st.image(output_image, caption="Change Heatmap", use_container_width=True)
+                elif task_type == "Cross-Modal Fusion" and len(uploaded_files) >= 2:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.image(uploaded_files[0], caption="Optical (RGB)", use_container_width=True)
+                    with col2:
+                        st.image(uploaded_files[1], caption="SAR (Texture)", use_container_width=True)
+                    with col3:
+                        st.image(output_image, caption="Fused Composite", use_container_width=True)
                 elif task_type == "Visual Grounding" and len(uploaded_files) >= 1:
                     col1, col2 = st.columns(2)
                     with col1:
