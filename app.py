@@ -3,12 +3,24 @@ import streamlit as st
 from dotenv import load_dotenv
 from utils import inspect_files
 from agent import process_query
+from ui import set_space_theme, login_page
 
 # Load environment variables from .env
 load_dotenv()
 
 def main():
     st.set_page_config(page_title="SatQuery AI - Vibe_coders", layout="wide")
+    
+    # Apply space theme
+    set_space_theme()
+    
+    # Authentication check
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+        
+    if not st.session_state["authenticated"]:
+        login_page()
+        return
         
     st.title("🛰️ SatQuery AI - Vibe_coders")
     st.markdown("Agentic Vision-Language Assistant for Remote Sensing Images (SIH26167)")
