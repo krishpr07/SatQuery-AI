@@ -42,6 +42,9 @@ def main():
                 st.sidebar.success(f"Detected Modality: {file_metadata['modality']}")
                 for f in uploaded_files:
                     st.sidebar.text(f"📄 {f.name}")
+                if file_metadata.get("compatibility_warnings"):
+                    for warn in file_metadata["compatibility_warnings"]:
+                        st.sidebar.warning(f"⚠️ {warn}")
             else:
                 st.sidebar.error(file_metadata.get("message", "Invalid configuration."))
         except Exception as e:

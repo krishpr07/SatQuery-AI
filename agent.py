@@ -2,6 +2,7 @@ import os
 import json
 from google import genai
 from PIL import Image
+from utils import preprocess_raster_for_vision
 
 def process_query(query: str, file_metadata: dict) -> dict:
     """
@@ -16,7 +17,7 @@ def process_query(query: str, file_metadata: dict) -> dict:
     
     system_prompt = (
         "You are an expert remote sensing AI assistant for SatQuery AI. "
-        "You will receive a user query and one or more satellite images. "
+        "You will receive a user query and one or more preprocessed satellite images (scaled to 8-bit RGB). "
         "Your job is to analyze the images and directly answer the query.\n\n"
         "You MUST respond with ONLY a valid JSON object matching this schema:\n"
         "{\n"
@@ -29,19 +30,17 @@ def process_query(query: str, file_metadata: dict) -> dict:
     # Prepare the contents to send to Gemini
     contents = [system_prompt, f"User Query: {query}"]
     
-    # Add all uploaded images to the prompt
+    # Preprocess all uploaded images and append to prompt
     for uploaded_file in file_metadata.get("files", []):
         try:
-            # Save position, read for PIL, restore position
-            pos = uploaded_file.tell()
-            uploaded_file.seek(0)
-            img = Image.open(uploaded_file)
-            # Make a copy in memory so we don't hold the file lock
-            img.load()
-            contents.append(img)
-            uploaded_file.seek(pos)
+            arr, meta = preprocess_raster_for_vision(uploaded_file)
+            if arr is not None:
+                # Convert processed numpy array to PIL Image for Gemini
+                img = Image.fromarray(arr)
+                contents.append(img)
+                contents.append(f"Metadata for above image: {meta}")
         except Exception as e:
-            print(f"Failed to load image for Gemini: {e}")
+            print(f"Failed to preprocess image for Gemini: {e}")
 
     try:
         response = client.models.generate_content(
