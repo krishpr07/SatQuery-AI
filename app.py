@@ -31,8 +31,9 @@ def generate_pdf_report(query, response, trace, output_image):
     clean_query = str(query).encode('latin-1', 'replace').decode('latin-1')
     clean_response = str(response).encode('latin-1', 'replace').decode('latin-1')
     
-    safe_query = textwrap.fill(clean_query, width=90)
-    safe_response = textwrap.fill(clean_response, width=90)
+    # Use a conservative width (65) to ensure wide characters don't exceed page margins
+    safe_query = textwrap.fill(clean_query, width=65, replace_whitespace=False, break_long_words=True)
+    safe_response = textwrap.fill(clean_response, width=65, replace_whitespace=False, break_long_words=True)
     
     pdf.multi_cell(0, 8, f"Query:\n{safe_query}")
     pdf.multi_cell(0, 8, f"Agent Response:\n{safe_response}")
@@ -44,7 +45,7 @@ def generate_pdf_report(query, response, trace, output_image):
     if trace:
         for k, v in trace.items():
             clean_v = str(v).encode('latin-1', 'replace').decode('latin-1')
-            safe_v = textwrap.fill(clean_v, width=90)
+            safe_v = textwrap.fill(clean_v, width=65, replace_whitespace=False, break_long_words=True)
             pdf.multi_cell(0, 8, f"{str(k).replace('_', ' ').title()}:\n{safe_v}")
     pdf.ln(5)
     
