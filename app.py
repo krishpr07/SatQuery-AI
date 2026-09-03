@@ -1,6 +1,7 @@
 import os
 import tempfile
 import datetime
+import textwrap
 import streamlit as st
 from dotenv import load_dotenv
 from fpdf import FPDF
@@ -25,8 +26,13 @@ def generate_pdf_report(query, response, trace, output_image):
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 10, "1. Query & Response", ln=True)
     pdf.set_font("Helvetica", "", 10)
-    pdf.multi_cell(0, 8, f"Query: {query}")
-    pdf.multi_cell(0, 8, f"Agent Response: {response}")
+    
+    # Wrap text to prevent FPDFException on extremely long unbroken strings (like error dicts)
+    safe_query = textwrap.fill(str(query), width=90)
+    safe_response = textwrap.fill(str(response), width=90)
+    
+    pdf.multi_cell(0, 8, f"Query:\n{safe_query}")
+    pdf.multi_cell(0, 8, f"Agent Response:\n{safe_response}")
     pdf.ln(5)
     
     pdf.set_font("Helvetica", "B", 12)
@@ -34,7 +40,8 @@ def generate_pdf_report(query, response, trace, output_image):
     pdf.set_font("Helvetica", "", 10)
     if trace:
         for k, v in trace.items():
-            pdf.cell(0, 8, f"{str(k).replace('_', ' ').title()}: {v}", ln=True)
+            safe_v = textwrap.fill(str(v), width=90)
+            pdf.multi_cell(0, 8, f"{str(k).replace('_', ' ').title()}:\n{safe_v}")
     pdf.ln(5)
     
     # Add Image
