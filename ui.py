@@ -90,7 +90,7 @@ def login_page():
             submitted = st.form_submit_button("Engage Thrusters (Login)")
             
             if submitted:
-                if username == "admin" and password == "admin":
+                if username == "admin" and password == "password":
                     st.session_state["authenticated"] = True
                     st.rerun()
                 else:
