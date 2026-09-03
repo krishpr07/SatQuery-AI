@@ -14,58 +14,66 @@ from agent import process_query
 load_dotenv()
 
 def generate_pdf_report(query, response, trace, output_image):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "SatQuery AI - Execution Audit Report", ln=True, align="C")
-    
-    pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 10, f"Timestamp: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
-    pdf.ln(5)
-    
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 10, "1. Query & Response", ln=True)
-    pdf.set_font("Helvetica", "", 10)
-    
-    # Sanitize unicode characters that Helvetica doesn't support, then wrap
-    clean_query = str(query).encode('latin-1', 'replace').decode('latin-1')
-    clean_response = str(response).encode('latin-1', 'replace').decode('latin-1')
-    
-    # Use a conservative width (65) to ensure wide characters don't exceed page margins
-    safe_query = textwrap.fill(clean_query, width=65, replace_whitespace=False, break_long_words=True)
-    safe_response = textwrap.fill(clean_response, width=65, replace_whitespace=False, break_long_words=True)
-    
-    pdf.multi_cell(0, 8, f"Query:\n{safe_query}")
-    pdf.multi_cell(0, 8, f"Agent Response:\n{safe_response}")
-    pdf.ln(5)
-    
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 10, "2. Execution Trace", ln=True)
-    pdf.set_font("Helvetica", "", 10)
-    if trace:
-        for k, v in trace.items():
-            clean_v = str(v).encode('latin-1', 'replace').decode('latin-1')
-            safe_v = textwrap.fill(clean_v, width=65, replace_whitespace=False, break_long_words=True)
-            pdf.multi_cell(0, 8, f"{str(k).replace('_', ' ').title()}:\n{safe_v}")
-    pdf.ln(5)
-    
-    # Add Image
-    if output_image is not None:
+    try:
+        pdf = FPDF()
         pdf.add_page()
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, "SatQuery AI - Execution Audit Report", ln=True, align="C")
+        
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 10, f"Timestamp: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
+        pdf.ln(5)
+        
         pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 10, "3. Visual Spatial Output", ln=True)
+        pdf.cell(0, 10, "1. Query & Response", ln=True)
+        pdf.set_font("Helvetica", "", 10)
         
-        # Save array to temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            im = Image.fromarray(output_image)
-            im.save(tmp.name)
-            pdf.image(tmp.name, w=170)
-            tmp_path = tmp.name
+        # Sanitize unicode characters that Helvetica doesn't support, then wrap
+        clean_query = str(query).encode('latin-1', 'replace').decode('latin-1')
+        clean_response = str(response).encode('latin-1', 'replace').decode('latin-1')
         
-        # Clean up
-        os.unlink(tmp_path)
+        # Use a conservative width (65) to ensure wide characters don't exceed page margins
+        safe_query = textwrap.fill(clean_query, width=65, replace_whitespace=False, break_long_words=True)
+        safe_response = textwrap.fill(clean_response, width=65, replace_whitespace=False, break_long_words=True)
         
-    return bytes(pdf.output())
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(pdf.epw, 8, f"Query:\n{safe_query}")
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(pdf.epw, 8, f"Agent Response:\n{safe_response}")
+        pdf.ln(5)
+        
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 10, "2. Execution Trace", ln=True)
+        pdf.set_font("Helvetica", "", 10)
+        if trace:
+            for k, v in trace.items():
+                clean_v = str(v).encode('latin-1', 'replace').decode('latin-1')
+                safe_v = textwrap.fill(clean_v, width=65, replace_whitespace=False, break_long_words=True)
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(pdf.epw, 8, f"{str(k).replace('_', ' ').title()}:\n{safe_v}")
+        pdf.ln(5)
+        
+        # Add Image
+        if output_image is not None:
+            pdf.add_page()
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 10, "3. Visual Spatial Output", ln=True)
+            pdf.ln(5)
+            
+            # Save array to temp file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                im = Image.fromarray(output_image)
+                im.save(tmp.name)
+                pdf.image(tmp.name, w=170)
+                tmp_path = tmp.name
+            
+            # Clean up
+            os.unlink(tmp_path)
+            
+        return bytes(pdf.output())
+    except Exception as e:
+        print(f"PDF Generation failed: {e}")
+        return None
 
 def set_custom_theme():
     # A beautiful, unique space background and modern sleek UI
@@ -311,12 +319,15 @@ def main():
             # PDF Report Button
             if trace:
                 pdf_bytes = generate_pdf_report(prompt, response, trace, output_image)
-                st.download_button(
-                    label="📄 Download Audit Report (PDF)",
-                    data=pdf_bytes,
-                    file_name=f"SatQuery_Audit_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                    mime="application/pdf"
-                )
+                if pdf_bytes is not None:
+                    st.download_button(
+                        label="📄 Download Audit Report (PDF)",
+                        data=pdf_bytes,
+                        file_name=f"SatQuery_Audit_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                        mime="application/pdf"
+                    )
+                else:
+                    st.error("Could not generate PDF report due to rendering constraints.")
                     
         st.session_state.messages.append({"role": "assistant", "content": response})
 
