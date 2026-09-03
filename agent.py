@@ -1,75 +1,128 @@
 import os
 import json
+import time
 from google import genai
-from PIL import Image
+from tools import (
+    tool_single_image_vqa,
+    tool_visual_grounding,
+    tool_change_detection,
+    tool_optical_sar_fusion
+)
 from utils import preprocess_raster_for_vision
 
-def process_query(query: str, file_metadata: dict) -> dict:
+def process_query(query: str, file_metadata: dict, chat_history: list = None) -> dict:
     """
-    Agentic controller that uses Gemini to analyze images and answer queries.
-    It returns a JSON response containing the task name, model used, and response.
+    Authentic 2-Stage Agentic Router.
+    Stage 1: Intent Routing via LLM to select tool and parameters.
+    Stage 2: Deterministic execution of the selected algorithm.
     """
-    # Initialize the Gemini client securely from environment
+    start_time = time.time()
+    
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY not found in environment variables.")
     client = genai.Client(api_key=api_key)
     
-    system_prompt = (
-        "You are an expert remote sensing AI assistant for SatQuery AI. "
-        "You will receive a user query and one or more preprocessed satellite images (scaled to 8-bit RGB). "
-        "Your job is to analyze the images and directly answer the query.\n\n"
-        "You MUST respond with ONLY a valid JSON object matching this schema:\n"
-        "{\n"
-        "  \"task_name\": \"[E.g., Single-Image VQA, Change Detection, etc.]\",\n"
-        "  \"model_used\": \"gemini-3.6-flash\",\n"
-        "  \"response\": \"[Your detailed answer based on the images]\"\n"
-        "}"
-    )
-    
-    # Prepare the contents to send to Gemini
-    contents = [system_prompt, f"User Query: {query}"]
-    
-    # Preprocess all uploaded images and append to prompt
+    # Preprocess images
+    processed_images = []
+    meta_list = []
     for uploaded_file in file_metadata.get("files", []):
         try:
             arr, meta = preprocess_raster_for_vision(uploaded_file)
             if arr is not None:
-                # Convert processed numpy array to PIL Image for Gemini
-                img = Image.fromarray(arr)
-                contents.append(img)
-                contents.append(f"Metadata for above image: {meta}")
+                processed_images.append(arr)
+                meta_list.append(meta)
         except Exception as e:
-            print(f"Failed to preprocess image for Gemini: {e}")
-
+            print(f"Preprocessing error: {e}")
+            
+    num_images = len(processed_images)
+    
+    # --- STAGE 1: Intent & Parameter Routing ---
+    history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in (chat_history or [])])
+    
+    routing_prompt = f"""
+    You are Stage 1 of an Agentic Remote Sensing Orchestrator.
+    Determine the correct tool to use based on the user's query, chat history, and number of available images ({num_images}).
+    
+    Available tools:
+    - tool_single_image_vqa: General Q&A about an image.
+    - tool_visual_grounding: Detects and draws bounding boxes around objects. Requires parameter 'target_phrase'.
+    - tool_change_detection: Requires 2 images. Computes change heatmaps over time.
+    - tool_optical_sar_fusion: Requires 2 images. Fuses Optical and SAR textures.
+    
+    Chat History:
+    {history_str}
+    
+    User Query: {query}
+    
+    Return EXACTLY this JSON format (no other text):
+    {{
+        "tool": "tool_name",
+        "parameters": {{"target_phrase": "extracted phrase if visual grounding"}} 
+    }}
+    """
+    
     try:
-        response = client.models.generate_content(
+        route_response = client.models.generate_content(
             model="gemini-3.6-flash",
-            contents=contents,
+            contents=[routing_prompt],
             config=genai.types.GenerateContentConfig(
                 response_mime_type="application/json",
-                temperature=0.1
+                temperature=0.0
             )
         )
-        
-        parsed_json = json.loads(response.text)
-        
-        # Map fields to what app.py expects, plus the new ones
-        return {
-            "selected_task": parsed_json.get("task_name", "N/A"),
-            "tools_used": parsed_json.get("model_used", "gemini-3.6-flash"),
-            "confidence_score": "High", # Gemini doesn't output confidence score natively
-            "reasoning": parsed_json.get("response", ""),
-            "modality": file_metadata.get("modality", "Unknown")
-        }
-        
-    except json.JSONDecodeError:
-        return {
-            "selected_task": "Error",
-            "tools_used": "None",
-            "confidence_score": "0%",
-            "reasoning": "The LLM failed to return a valid JSON object.",
-            "modality": file_metadata.get("modality", "Unknown")
-        }
+        route_data = json.loads(route_response.text)
+        selected_tool = route_data.get("tool", "tool_single_image_vqa")
+        params = route_data.get("parameters", {})
     except Exception as e:
-        raise Exception(f"Gemini API Error: {str(e)}")
+        print(f"Routing Error: {e}")
+        selected_tool = "tool_single_image_vqa"
+        params = {}
+        
+    # --- STAGE 2: Tool Execution ---
+    response_text = "Error in tool execution."
+    confidence = 0.0
+    output_image = None
+    task_type = "Unknown"
+    
+    meta_context = meta_list[0] if meta_list else {}
+    
+    try:
+        if selected_tool == "tool_visual_grounding" and num_images >= 1:
+            target = params.get("target_phrase", query)
+            response_text, confidence, output_image = tool_visual_grounding(processed_images[0], meta_context, target)
+            task_type = "Visual Grounding"
+        elif selected_tool == "tool_change_detection" and num_images >= 2:
+            response_text, confidence, output_image = tool_change_detection(processed_images[0], processed_images[1], meta_list)
+            task_type = "Change Detection"
+        elif selected_tool == "tool_optical_sar_fusion" and num_images >= 2:
+            response_text, confidence, output_image = tool_optical_sar_fusion(processed_images[0], processed_images[1], meta_list)
+            task_type = "Cross-Modal Fusion"
+        else:
+            selected_tool = "tool_single_image_vqa"
+            if num_images >= 1:
+                response_text, confidence, output_image = tool_single_image_vqa(processed_images[0], meta_context, query)
+                task_type = "VQA"
+            else:
+                response_text = "No valid images to process."
+                task_type = "Error"
+    except Exception as e:
+        response_text = f"Tool '{selected_tool}' execution failed: {str(e)}"
+        task_type = "Execution Error"
+        
+    latency = round(time.time() - start_time, 2)
+    
+    # Construct authentic ExecutionTrace
+    trace = {
+        "task_type": task_type,
+        "tool_called": selected_tool,
+        "parameters": params,
+        "latency_seconds": latency,
+        "confidence_score": round(confidence, 2)
+    }
+    
+    return {
+        "response": response_text,
+        "trace": trace,
+        "output_image": output_image
+    }
