@@ -12,4 +12,4 @@ python-dotenv
 opencv-python-headless>=4.8.0
 shapely>=2.0.0
 fpdf2>=2.7.5
-streamlit-option-menu
+streamlit-option-menu>=0.3.6
