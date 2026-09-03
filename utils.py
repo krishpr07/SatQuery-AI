@@ -240,3 +240,71 @@ def inspect_files(uploaded_files):
         "num_files": num_files,
         "compatibility_warnings": warnings
     }
+
+def tile_raster(image_array, metadata=None, tile_size=512, overlap=64):
+    """
+    Generates overlapping tiles for large imagery to prevent OOM errors.
+    """
+    if metadata is None:
+        metadata = {}
+        
+    h, w = image_array.shape[:2]
+    
+    if h <= 1024 and w <= 1024:
+        metadata["tiles_coords"] = [(0, 0, h, w)]
+        metadata["original_shape"] = image_array.shape
+        return [image_array]
+        
+    stride = tile_size - overlap
+    tiles = []
+    coords = []
+    
+    for y in range(0, h, stride):
+        for x in range(0, w, stride):
+            y_end = min(y + tile_size, h)
+            x_end = min(x + tile_size, w)
+            
+            tile = image_array[y:y_end, x:x_end]
+            tiles.append(tile)
+            coords.append((y, x, y_end, x_end))
+            
+    metadata["tiles_coords"] = coords
+    metadata["original_shape"] = image_array.shape
+    return tiles
+
+def stitch_tiles(tiles, metadata):
+    """
+    Stitches overlapping tiles back into the full georeferenced canvas.
+    """
+    coords = metadata.get("tiles_coords", [])
+    original_shape = metadata.get("original_shape", (0, 0))
+    
+    if not coords or not tiles:
+        return None
+        
+    h, w = original_shape[:2]
+    channels = tiles[0].shape[2] if len(tiles[0].shape) > 2 else 1
+    
+    if channels > 1:
+        canvas = np.zeros((h, w, channels), dtype=np.float32)
+    else:
+        canvas = np.zeros((h, w), dtype=np.float32)
+        
+    counts = np.zeros((h, w), dtype=np.float32)
+    
+    for tile, (y, x, y_end, x_end) in zip(tiles, coords):
+        if channels > 1:
+            canvas[y:y_end, x:x_end, :] += tile
+        else:
+            canvas[y:y_end, x:x_end] += tile
+            
+        counts[y:y_end, x:x_end] += 1
+        
+    counts[counts == 0] = 1
+    
+    if channels > 1:
+        canvas /= counts[..., np.newaxis]
+    else:
+        canvas /= counts
+        
+    return canvas.astype(tiles[0].dtype)
