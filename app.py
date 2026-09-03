@@ -6,7 +6,6 @@ import streamlit as st
 from dotenv import load_dotenv
 from fpdf import FPDF
 from PIL import Image
-from streamlit_option_menu import option_menu
 from utils import inspect_files
 from agent import process_query
 
@@ -92,34 +91,42 @@ def set_custom_theme():
     header {visibility: hidden;}
     
     .stApp {
-        background-color: #090D16;
+        background-color: #050510;
         background-image: 
-            linear-gradient(rgba(9, 13, 22, 0.90), rgba(9, 13, 22, 1.0)),
-            url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop");
+            linear-gradient(rgba(5, 5, 16, 0.65), rgba(5, 5, 16, 0.95)),
+            url("https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?q=80&w=2070&auto=format&fit=crop");
         background-size: cover;
         background-attachment: fixed;
         background-position: center;
-        color: #E2E8F0;
+        color: #FFFFFF;
+    }
+
+    /* Text Visibility and Global styles */
+    h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {
+        color: #F8FAFC !important;
+        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.9);
     }
     
     /* Hero Title styling */
     .hero-title {
-        font-size: 3.5rem;
-        font-weight: 700;
+        font-size: 4rem;
+        font-weight: 800;
         text-align: center;
         margin-top: 2rem;
         margin-bottom: 0.5rem;
-        background: -webkit-linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+        background: -webkit-linear-gradient(45deg, #A78BFA 0%, #38BDF8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        text-shadow: 0px 4px 15px rgba(56, 189, 248, 0.4);
     }
     
     .hero-subtitle {
-        font-size: 1.2rem;
-        font-weight: 300;
+        font-size: 1.3rem;
+        font-weight: 400;
         text-align: center;
-        color: #94A3B8;
+        color: #E2E8F0;
         margin-bottom: 3rem;
+        text-shadow: 1px 1px 4px rgba(0,0,0,0.9);
     }
     
     /* Custom Tabs */
@@ -175,6 +182,31 @@ def main():
     st.set_page_config(page_title="SatQuery AI", layout="wide", initial_sidebar_state="collapsed")
     set_custom_theme()
     
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    if not st.session_state.logged_in:
+        st.markdown("<div class='hero-title'>SatQuery Portal</div>", unsafe_allow_html=True)
+        st.markdown("<div class='hero-subtitle'>Authenticate to access advanced remote sensing intelligence</div>", unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.markdown("<div style='background: rgba(15, 23, 42, 0.6); padding: 2rem; border-radius: 16px; border: 1px solid #334155;'>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 1.5rem;'>Login</h3>", unsafe_allow_html=True)
+            
+            username = st.text_input("Username", key="user_login")
+            password = st.text_input("Password", type="password", key="pass_login")
+            
+            if st.button("Enter Portal", use_container_width=True):
+                # Using a dummy check for the demo
+                if username and password:
+                    st.session_state.logged_in = True
+                    st.rerun()
+                else:
+                    st.error("Please enter username and password")
+            st.markdown("</div>", unsafe_allow_html=True)
+        return
+
     # Hero Section
     st.markdown("<div class='hero-title'>Discover Earth's Secrets</div>", unsafe_allow_html=True)
     st.markdown("<div class='hero-subtitle'>Advanced AI-driven remote sensing intelligence at your fingertips.</div>", unsafe_allow_html=True)
@@ -183,53 +215,20 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Main Analysis Interface (Pill Navbar)
-    st.markdown("<h3 style='text-align: center; color: white;'>Analyze a Scene</h3>", unsafe_allow_html=True)
+    # Unified Upload Interface
+    st.markdown("<h3 style='text-align: center; color: #E2E8F0; margin-bottom: 1rem;'>Upload Imagery</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #cbd5e1; font-size: 1.1rem; margin-bottom: 2rem;'>Upload one or more satellite images. The system will automatically detect the modality (Single Image, Fusion, Change Analysis) based on your files.</p>", unsafe_allow_html=True)
     
-    selected_mode = option_menu(
-        menu_title=None,
-        options=["Single Image", "Optical + SAR Fusion", "Change Analysis"],
-        icons=["image", "layers", "arrow-repeat"],
-        default_index=0,
-        orientation="horizontal",
-        styles={
-            "container": {"padding": "0!important", "background-color": "rgba(30, 41, 59, 0.3)", "border-radius": "100px", "border": "1px solid #1E293B", "max-width": "700px", "margin": "0 auto 30px auto"},
-            "icon": {"color": "#94A3B8", "font-size": "16px"}, 
-            "nav-link": {"font-size": "14px", "text-align": "center", "margin": "0px", "color": "#94A3B8", "border-radius": "100px", "padding": "10px 20px"},
-            "nav-link-selected": {"background-color": "rgba(59, 130, 246, 0.8)", "color": "white", "box-shadow": "0 0 15px rgba(59,130,246,0.3)"},
-        }
-    )
-    
-    uploaded_files = []
-    
-    if selected_mode == "Single Image":
-        st.markdown("<p style='text-align: center; color: #94A3B8;'>Upload a single satellite image for Visual Grounding or QA.</p>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            file = st.file_uploader("Drop image here", type=["png", "jpg", "jpeg", "tif", "tiff"], key="single")
-            if file: uploaded_files.append(file)
-            
-    elif selected_mode == "Optical + SAR Fusion":
-        st.markdown("<p style='text-align: center; color: #94A3B8;'>Upload one Optical and one SAR image for structural fusion.</p>", unsafe_allow_html=True)
-        col1, col2 = st.columns(2)
-        with col1:
-            opt = st.file_uploader("Optical Image", type=["png", "jpg", "jpeg", "tif", "tiff"], key="opt")
-            if opt: uploaded_files.append(opt)
-        with col2:
-            sar = st.file_uploader("SAR Image", type=["png", "jpg", "jpeg", "tif", "tiff"], key="sar")
-            if sar: uploaded_files.append(sar)
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col2:
+        uploaded_files = st.file_uploader(
+            "Drag and drop your images here", 
+            type=["png", "jpg", "jpeg", "tif", "tiff"], 
+            accept_multiple_files=True,
+            key="unified_upload"
+        )
 
-    elif selected_mode == "Change Analysis":
-        st.markdown("<p style='text-align: center; color: #94A3B8;'>Upload two images of the same area over time to detect changes.</p>", unsafe_allow_html=True)
-        col1, col2 = st.columns(2)
-        with col1:
-            t1 = st.file_uploader("Before (T1)", type=["png", "jpg", "jpeg", "tif", "tiff"], key="t1")
-            if t1: uploaded_files.append(t1)
-        with col2:
-            t2 = st.file_uploader("After (T2)", type=["png", "jpg", "jpeg", "tif", "tiff"], key="t2")
-            if t2: uploaded_files.append(t2)
-
-    st.markdown("---")
+    st.markdown("<br><hr style='border: 1px solid rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
     
     # Process Files
     file_metadata = None
