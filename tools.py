@@ -59,8 +59,8 @@ def tool_visual_grounding(image_rgb, metadata, target_phrase):
     confidence = 0.90 if boxes else 0.40
     return f"Detected {len(boxes)} instances of '{target_phrase}' in the region.", confidence, annotated
 
-def tool_change_detection(img1_rgb, img2_rgb, metadata):
-    """Executes structural dissimilarity mapping."""
+def tool_change_detection_reasoning(img1_rgb, img2_rgb, metadata, query):
+    """Executes structural dissimilarity mapping with directional reasoning and entropy confidence."""
     if img1_rgb.shape != img2_rgb.shape:
         img2_rgb = cv2.resize(img2_rgb, (img1_rgb.shape[1], img1_rgb.shape[0]))
         
@@ -81,14 +81,30 @@ def tool_change_detection(img1_rgb, img2_rgb, metadata):
     total_pixels = thresh.size
     change_pct = (changed_pixels / total_pixels) * 100
     
+    # Determine Primary Spatial Direction of Change
+    M = cv2.moments(thresh)
+    if M["m00"] != 0:
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+        h, w = thresh.shape
+        dir_y = "North" if cY < h/2 else "South"
+        dir_x = "West" if cX < w/2 else "East"
+        direction = f"{dir_y}-{dir_x}"
+    else:
+        direction = "Uniform"
+
+    # Calibrated Confidence Estimation (based on mask entropy)
+    p = np.clip(change_pct / 100.0, 1e-7, 1 - 1e-7)
+    entropy = -p * np.log2(p) - (1-p) * np.log2(1-p)
+    confidence = float(np.clip(1.0 - (entropy * 0.8), 0.1, 0.99)) # Sharper edge maps give higher confidence
+    
     # Create red heatmap overlay
     heatmap = np.zeros_like(img2_rgb)
     heatmap[:, :, 0] = thresh # Red channel
     
     overlay = cv2.addWeighted(img2_rgb, 0.7, heatmap, 0.4, 0)
     
-    response = f"Computed pixel-level structural dissimilarity (SSIM: {score:.3f}). Calculated exact change footprint across {change_pct:.2f}% of the total spatial area."
-    confidence = float(score) # Confidence tied to structural integrity
+    response = f"Computed pixel-level structural dissimilarity (SSIM: {score:.3f}). Change footprint covers {change_pct:.2f}% of area, primarily shifting towards the {direction} quadrant."
     return response, confidence, overlay
 
 def tool_optical_sar_fusion(opt_rgb, sar_rgb, metadata):

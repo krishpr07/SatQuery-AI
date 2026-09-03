@@ -5,7 +5,7 @@ from google import genai
 from tools import (
     tool_single_image_vqa,
     tool_visual_grounding,
-    tool_change_detection,
+    tool_change_detection_reasoning,
     tool_optical_sar_fusion
 )
 from utils import preprocess_raster_for_vision
@@ -47,7 +47,7 @@ def process_query(query: str, file_metadata: dict, chat_history: list = None) ->
     Available tools:
     - tool_single_image_vqa: General Q&A about an image.
     - tool_visual_grounding: Detects and draws bounding boxes around objects. Requires parameter 'target_phrase'.
-    - tool_change_detection: Requires 2 images. Computes change heatmaps over time.
+    - tool_change_detection_reasoning: Requires 2 images. Computes change heatmaps over time.
     - tool_optical_sar_fusion: Requires 2 images. Fuses Optical and SAR textures.
     
     Chat History:
@@ -92,8 +92,14 @@ def process_query(query: str, file_metadata: dict, chat_history: list = None) ->
             target = params.get("target_phrase", query)
             response_text, confidence, output_image = tool_visual_grounding(processed_images[0], meta_context, target)
             task_type = "Visual Grounding"
-        elif selected_tool == "tool_change_detection" and num_images >= 2:
-            response_text, confidence, output_image = tool_change_detection(processed_images[0], processed_images[1], meta_list)
+        elif selected_tool == "tool_change_detection_reasoning":
+            if num_images < 2:
+                return {
+                    "response": "Change detection requires exactly two images (Before and After). Please upload a second image.",
+                    "trace": {"task_type": "Execution Error", "tool_called": "None", "error": "Missing temporal pair"},
+                    "output_image": None
+                }
+            response_text, confidence, output_image = tool_change_detection_reasoning(processed_images[0], processed_images[1], file_metadata, query)
             task_type = "Change Detection"
         elif selected_tool == "tool_optical_sar_fusion" and num_images >= 2:
             response_text, confidence, output_image = tool_optical_sar_fusion(processed_images[0], processed_images[1], meta_list)
