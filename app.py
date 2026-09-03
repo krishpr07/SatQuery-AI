@@ -27,9 +27,12 @@ def generate_pdf_report(query, response, trace, output_image):
     pdf.cell(0, 10, "1. Query & Response", ln=True)
     pdf.set_font("Helvetica", "", 10)
     
-    # Wrap text to prevent FPDFException on extremely long unbroken strings (like error dicts)
-    safe_query = textwrap.fill(str(query), width=90)
-    safe_response = textwrap.fill(str(response), width=90)
+    # Sanitize unicode characters that Helvetica doesn't support, then wrap
+    clean_query = str(query).encode('latin-1', 'replace').decode('latin-1')
+    clean_response = str(response).encode('latin-1', 'replace').decode('latin-1')
+    
+    safe_query = textwrap.fill(clean_query, width=90)
+    safe_response = textwrap.fill(clean_response, width=90)
     
     pdf.multi_cell(0, 8, f"Query:\n{safe_query}")
     pdf.multi_cell(0, 8, f"Agent Response:\n{safe_response}")
@@ -40,7 +43,8 @@ def generate_pdf_report(query, response, trace, output_image):
     pdf.set_font("Helvetica", "", 10)
     if trace:
         for k, v in trace.items():
-            safe_v = textwrap.fill(str(v), width=90)
+            clean_v = str(v).encode('latin-1', 'replace').decode('latin-1')
+            safe_v = textwrap.fill(clean_v, width=90)
             pdf.multi_cell(0, 8, f"{str(k).replace('_', ' ').title()}:\n{safe_v}")
     pdf.ln(5)
     
