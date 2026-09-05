@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://via.placeholder.com/800x200/000000/FFFFFF/?text=SatQuery+AI" alt="SatQuery AI Banner" width="100%">
+  <img src="assets/banner.jpg" alt="SatQuery AI Banner" width="100%">
   
   <h1>🌍 SatQuery AI</h1>
   <h3>Interactive Multimodal Remote Sensing Assistant</h3>
