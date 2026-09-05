@@ -1,14 +1,33 @@
-# SatQuery AI: Interactive Multimodal Remote Sensing Assistant
+<div align="center">
+  <img src="https://via.placeholder.com/800x200/000000/FFFFFF/?text=SatQuery+AI" alt="SatQuery AI Banner" width="100%">
+  
+  <h1>🌍 SatQuery AI</h1>
+  <h3>Interactive Multimodal Remote Sensing Assistant</h3>
 
-[![SIH 2026](https://img.shields.io/badge/SIH%202026-Problem%20SIH26167-blue.svg)](https://www.sih.gov.in/)
-[![Domain](https://img.shields.io/badge/Domain-Remote%20Sensing%20%7C%20Agentic%20AI-orange.svg)]()
-[![Model](https://img.shields.io/badge/Domain%20Adapted-PaliGemma--3B%20(QLoRA)-green.svg)]()
-[![Backend](https://img.shields.io/badge/Raster%20Engine-Rasterio%20%7C%20GeoTIFF-purple.svg)]()
-[![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)]()
+  <p>
+    <a href="https://www.sih.gov.in/"><img src="https://img.shields.io/badge/SIH%202026-Problem%20SIH26167-blue.svg?style=for-the-badge" alt="SIH 2026"></a>
+    <img src="https://img.shields.io/badge/Domain-Remote%20Sensing%20%7C%20Agentic%20AI-orange.svg?style=for-the-badge" alt="Domain">
+    <img src="https://img.shields.io/badge/Model-PaliGemma--3B%20(QLoRA)-green.svg?style=for-the-badge" alt="Model">
+    <img src="https://img.shields.io/badge/Backend-Rasterio%20%7C%20GeoTIFF-purple.svg?style=for-the-badge" alt="Backend">
+    <img src="https://img.shields.io/badge/License-MIT-lightgrey.svg?style=for-the-badge" alt="License">
+  </p>
+</div>
 
 > **Problem Statement (SIH26167):** SatQuery AI – An Interactive Vision-Language Assistant for Multimodal Remote Sensing Image Analysis through Text Queries  
 > **Team:** Vibe_coders  
 > **Target Sensor Modalities:** ISRO Cartosat-2S (Optical Panchromatic / Multispectral), RISAT-1/1A (SAR), Sentinel-1, Sentinel-2, Landsat-8/9  
+
+---
+
+## 📑 Table of Contents
+- [📌 Overview](#-overview)
+- [✨ Demo](#-demo)
+- [🏗️ System Architecture](#️-system-architecture)
+- [🚀 Key Technical Features](#-key-technical-features)
+- [📊 Quantitative Benchmarks](#-quantitative-benchmarks)
+- [📂 Repository Structure](#-repository-structure)
+- [⚙️ Installation & Setup](#️-installation--setup)
+- [🎯 SIH Compliance Verification](#-sih-compliance-verification)
 
 ---
 
@@ -21,6 +40,11 @@ Generic Vision-Language Models (VLMs) fail when processing remote sensing imager
 2. **Geospatial Physics Engine:** Native extraction of Coordinate Reference Systems (CRS), Ground Sampling Distance (GSD), radiometric SAR calibration in decibels (dB), and multispectral vegetation indices (NDVI) via `rasterio`.
 3. **Deterministic Agentic Orchestrator:** Intent-driven tool selection and input compatibility validation with an auditable JSON execution trace and calibrated confidence estimation.
 4. **Visual Spatial Evidence:** Bounding-box visual grounding overlays and bi-temporal change heatmaps rendered directly in the UI and downloadable PDF audit reports.
+
+---
+
+## ✨ Demo
+*(Coming Soon! Add a GIF here showing the Streamlit UI analyzing a satellite image)*
 
 ---
 
